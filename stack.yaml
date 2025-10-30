@@ -1,4 +1,5 @@
-﻿version: "3.8"
+﻿version: "3.9"
+
 services:
   gha-status-proxy:
     image: ghastatusproxy:latest
@@ -6,22 +7,27 @@ services:
       context: .
       dockerfile: src/GhaStatusProxy/Dockerfile
     environment:
-      - ASPNETCORE_URLS=http://0.0.0.0:8080
-      - CONFIG_PATH=/data/config.json
-      - CONFIG_JSON=|-
+      ASPNETCORE_URLS: "http://0.0.0.0:8080"
+      CONFIG_PATH: "/data/config.json"
+      CONFIG_JSON: |
         {
-        "Token": "ghp_replace_me",
-        "Repos": [
-          "owner/repo1",
-          "owner/repo2"
-        ]
-      }
-    command: ["/bin/sh","-c","mkdir -p /data && printf '%s' \"$CONFIG_JSON\" > /data/config.json && /app/GhaStatusProxy"]
+          "Token": "ghp_replace_me",
+          "Repos": [
+            "owner/repo1",
+            "owner/repo2"
+          ]
+        }
+    entrypoint: >
+      /bin/sh -lc '
+      mkdir -p /data &&
+      printf "%s" "$CONFIG_JSON" > /data/config.json &&
+      cp /data/config.json /app/config.json &&
+      exec /app/GhaStatusProxy'
     volumes:
       - gha_status_data:/data
     ports:
       - "8080:8080"
     restart: unless-stopped
+
 volumes:
   gha_status_data:
-
