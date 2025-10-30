@@ -1,0 +1,8 @@
+{
+  "Token": "ghp_example",
+  "Repos": [
+    "owner/repo1",
+    "owner/repo2"
+  ]
+}
+

@@ -1,0 +1,29 @@
+# Build artifacts
+bin/
+obj/
+out/
+TestResults/
+
+# Rider / VS / VSCode
+.idea/
+.vs/
+*.user
+*.suo
+*.userprefs
+*.psess
+*.vsp
+*.pidb
+*.svclog
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dotnet
+*.log
+*.nupkg
+*.snupkg
+
+# Others
+*.swp
+*.lock
