@@ -38,6 +38,51 @@ Response example:
 
 ---
 
+### 2. Run via `stack.yaml`
+You can also run the service using the included `stack.yaml` (e.g., in Portainer or Docker Compose):
+
+```yaml
+version: "3.9"
+services:
+  gha-status-proxy:
+    image: ghastatusproxy:latest
+    build:
+      context: .
+      dockerfile: src/GhaStatusProxy/Dockerfile
+    environment:
+      ASPNETCORE_URLS: "http://0.0.0.0:8080"
+      CONFIG_PATH: "/data/config.json"
+      CONFIG_JSON: |
+        {
+          "Token": "ghp_your_token_here",
+          "Repos": [
+            "owner/repo1",
+            "owner/repo2"
+          ]
+        }
+    entrypoint: >
+      /bin/sh -lc '
+      mkdir -p /data &&
+      printf "%s" "$CONFIG_JSON" > /data/config.json &&
+      cp /data/config.json /app/config.json &&
+      exec /app/GhaStatusProxy'
+    ports:
+      - "8080:8080"
+```
+
+Deploy this file directly in **Portainer → Stacks → Add Stack** or via
+```bash
+docker compose -f stack.yaml up -d --build
+```
+
+---
+
+### 🧩 Note
+- The container runs self-contained (`/app/GhaStatusProxy`), no external .NET runtime required.
+- You can also use environment variables (`GitHub__Token`, `GitHub__Repos__0`, etc.) instead of `CONFIG_JSON` if preferred.
+
+---
+
 ## ⚙️ Configuration
 
 Environment variables:
