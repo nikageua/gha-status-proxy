@@ -26,11 +26,11 @@ Response example:
 {
   "results": [
     {
-      "repo": "nikageua/LookBook",
+      "repo": "nikageua/gha-status-proxy",
       "status": "completed",
       "conclusion": "success",
       "updatedAt": "2025-10-30T19:40:12Z",
-      "url": "https://github.com/nikageua/LookBook/actions/runs/123456789"
+      "url": "https://github.com/nikageua/gha-status-proxy/actions/runs/123456789"
     }
   ]
 }
