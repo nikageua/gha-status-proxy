@@ -1,13 +1,16 @@
-﻿# build
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+﻿FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY . .
-RUN dotnet publish -c Release -o /out
 
-# runtime
+COPY src/GhaStatusProxy/*.csproj src/GhaStatusProxy/
+RUN dotnet restore src/GhaStatusProxy/GhaStatusProxy.csproj
+
+COPY src/GhaStatusProxy/ src/GhaStatusProxy/
+
+RUN dotnet publish src/GhaStatusProxy/GhaStatusProxy.csproj -c Release -o /app \
+    --no-self-contained
+
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
-COPY --from=build /out .
+COPY --from=build /app .
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
-EXPOSE 8080
-ENTRYPOINT ["dotnet", "gha-status-proxy.dll"]
+ENTRYPOINT ["dotnet","/app/GhaStatusProxy.dll"]
