@@ -2,15 +2,21 @@ using GhaStatusProxy.Abstractions;
 using GhaStatusProxy.Endpoints;
 using GhaStatusProxy.Options;
 using GhaStatusProxy.Services;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Configuration.AddEnvironmentVariables();
 builder.Services.Configure<ConfigStoreOptions>(opts =>
 {
     opts.Path = Environment.GetEnvironmentVariable("CONFIG_PATH") ?? "config.json";
 });
-
-builder.Services.AddSingleton<IConfigStore, FileConfigStore>();
+builder.Services.AddSingleton<IConfigStore>(sp =>
+{
+    var fileOptions = sp.GetRequiredService<IOptions<ConfigStoreOptions>>();
+    var env = new EnvConfigStore();
+    var file = new FileConfigStore(fileOptions);
+    return new CompositeConfigStore(env, file);
+});
 builder.Services.AddSingleton<IGitHubClientFactory, GitHubClientFactory>();
 builder.Services.AddSingleton<IGhaService, GhaService>();
 

@@ -1,0 +1,18 @@
+# --- Build stage ---
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Restore only the project to use cache efficiently
+COPY src/GhaStatusProxy/GhaStatusProxy.csproj ./GhaStatusProxy.csproj
+RUN dotnet restore GhaStatusProxy.csproj
+
+# Copy the entire source and publish
+COPY src/GhaStatusProxy/. ./
+RUN dotnet publish GhaStatusProxy.csproj -c Release -o /out --no-self-contained --nologo
+
+# --- Runtime stage ---
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /out .
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080
+ENTRYPOINT ["/app/GhaStatusProxy"]
