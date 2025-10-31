@@ -13,7 +13,8 @@ builder.Services.Configure<ConfigStoreOptions>(opts =>
 builder.Services.AddSingleton<IConfigStore>(sp =>
 {
     var fileOptions = sp.GetRequiredService<IOptions<ConfigStoreOptions>>();
-    var env = new EnvConfigStore();
+    var logger = sp.GetRequiredService<ILogger<EnvConfigStore>>();
+    var env = new EnvConfigStore(logger);
     var file = new FileConfigStore(fileOptions);
     return new CompositeConfigStore(env, file);
 });

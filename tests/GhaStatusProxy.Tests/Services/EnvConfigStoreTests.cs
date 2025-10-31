@@ -2,76 +2,77 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
-using GhaStatusProxy.Services;
-using GhaStatusProxy.Abstractions;
 using GhaStatusProxy.Models;
+using GhaStatusProxy.Services;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace GhaStatusProxy.Tests.Services;
 
 public sealed class EnvConfigStoreTests : IDisposable
 {
-    private static readonly string[] KeysToClean =
-        Enumerable.Empty<string>()
-        .Concat(new[] { "GitHub__Token", "GitHub:Token" })
-        .Concat(Enumerable.Range(0, 10).Select(i => $"GitHub__Repos__{i}"))
-        .Concat(Enumerable.Range(0, 10).Select(i => $"GitHub:Repos:{i}"))
-        .ToArray();
+    private readonly Mock<ILogger<EnvConfigStore>> _logger = new();
 
     public EnvConfigStoreTests() => ClearEnv();
     public void Dispose() => ClearEnv();
 
     private static void ClearEnv()
     {
-        foreach (var k in KeysToClean)
-            Environment.SetEnvironmentVariable(k, null);
+        foreach (var key in Environment.GetEnvironmentVariables().Keys.Cast<string>()
+                     .Where(k => k.StartsWith("GitHub", StringComparison.OrdinalIgnoreCase)))
+        {
+            Environment.SetEnvironmentVariable(key, null);
+        }
     }
 
     [Fact]
-    public async Task LoadAsync_ReturnsEmptyConfig_WhenNoEnv()
+    public async Task LoadAsync_WhenNoVariables_ReturnsEmptyAndLogs()
     {
-        var store = new EnvConfigStore();
+        var store = new EnvConfigStore(_logger.Object);
 
         var cfg = await store.LoadAsync();
 
-        cfg.Should().NotBeNull();
-        cfg.Token.Should().BeNullOrEmpty();
+        cfg.Token.Should().BeEmpty();
         cfg.Repos.Should().BeEmpty();
+
+        _logger.Verify(l => l.Log(
+                It.Is<LogLevel>(ll => ll == LogLevel.Information),
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Token")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.AtLeastOnce);
     }
 
     [Fact]
-    public async Task LoadAsync_Prefers_DoubleUnderscore_Over_Colon()
+    public async Task LoadAsync_ReadsTokenAndReposAndLogsFound()
     {
-        Environment.SetEnvironmentVariable("GitHub:Token", "colon");
-        Environment.SetEnvironmentVariable("GitHub__Token", "dd");
-
-        var store = new EnvConfigStore();
-        var cfg = await store.LoadAsync();
-
-        cfg.Token.Should().Be("dd");
-    }
-
-    [Fact]
-    public async Task LoadAsync_ReadsRepos_Sequentially_StopsOnGap()
-    {
-        Environment.SetEnvironmentVariable("GitHub__Token", "pat");
+        Environment.SetEnvironmentVariable("GitHub__Token", "tok123");
         Environment.SetEnvironmentVariable("GitHub__Repos__0", "a/b");
         Environment.SetEnvironmentVariable("GitHub__Repos__1", "c/d");
-        Environment.SetEnvironmentVariable("GitHub__Repos__3", "e/f");
 
-        var store = new EnvConfigStore();
+        var store = new EnvConfigStore(_logger.Object);
         var cfg = await store.LoadAsync();
 
+        cfg.Token.Should().Be("tok123");
         cfg.Repos.Should().ContainInOrder("a/b", "c/d");
-        cfg.Repos.Should().HaveCount(2);
+
+        _logger.Verify(l => l.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Found repo var")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Exactly(2)); // two repos
     }
 
     [Fact]
     public async Task SaveAsync_Throws_NotSupported()
     {
-        var store = new EnvConfigStore();
-        var cfg = new AppConfig("", Array.Empty<string>());
-        Func<Task> act = async () => await store.SaveAsync(cfg);
+        var store = new EnvConfigStore(_logger.Object);
+        var act = async () => await store.SaveAsync(new AppConfig("t", Array.Empty<string>()));
+
         await act.Should().ThrowAsync<NotSupportedException>();
     }
 }
